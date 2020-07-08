@@ -175,7 +175,7 @@ tresult PLUGIN_API CrossDelayProcessor::process(ProcessData& data)
 
                     case kCrossFeedback:
                     if (paramQueue->getPoint(numPoints - 1, sampleOffset, value) == kResultTrue)
-                        crossFeedback = value * 0.5;
+                        crossFeedback = value;
                     break;
 
                     case kMixL:

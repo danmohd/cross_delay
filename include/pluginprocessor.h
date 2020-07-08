@@ -41,7 +41,7 @@ private:
     float delayTimeR;
     float feedbackL;
     float feedbackR;
-    float crossFeedback;
+    float crossFeedback;    // Issue with stability. What should be the Range?
     float mixL;
     float mixR;
 
