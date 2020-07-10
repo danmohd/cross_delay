@@ -8,7 +8,7 @@ set(plug_sources
     source/pluginfactory.cpp
     source/pluginfo.rc)
 
-set(target cross_delay)
+set(target DanishCrossDelay)
 
 smtg_add_vst3plugin(${target} ${plug_sources})
 set_target_properties(${target} PROPERTIES ${SDK_IDE_MYPLUGINS_FOLDER})

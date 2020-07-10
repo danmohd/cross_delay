@@ -21,6 +21,7 @@ public:
                                           SpeakerArrangement* outputs, int32 numOuts) SMTG_OVERRIDE;
     tresult PLUGIN_API canProcessSampleSize(int32 symbolicSampleSize) SMTG_OVERRIDE;
     tresult PLUGIN_API setupProcessing(ProcessSetup& setup) SMTG_OVERRIDE;
+    tresult PLUGIN_API setActive(TBool state) SMTG_OVERRIDE;
     tresult PLUGIN_API setProcessing(TBool state) SMTG_OVERRIDE;
     tresult PLUGIN_API process(ProcessData& data) SMTG_OVERRIDE;
     uint32 PLUGIN_API getTailSamples() SMTG_OVERRIDE { return kInfiniteTail; }
@@ -52,8 +53,8 @@ private:
     int32 delayLineWriteHeadR;
     int32 delayLineReadHeadR;
 
-    std::vector<Sample32> delayBufferL;
-    std::vector<Sample32> delayBufferR;
+    Sample32* delayBufferL;
+    Sample32* delayBufferR;
 };
 
 }
