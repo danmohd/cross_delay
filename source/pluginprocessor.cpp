@@ -118,31 +118,17 @@ tresult PLUGIN_API CrossDelayProcessor::setActive(TBool state)
     {
         delayBufferL = (Sample32*)malloc(delayLineSizeInSamples * sizeof(Sample32));
         delayBufferR = (Sample32*)malloc(delayLineSizeInSamples * sizeof(Sample32));
-    }
-    else
-    {
-        if (delayBufferL)
-        {
-            free(delayBufferL);
-            delayBufferL = nullptr;
-        }
-        if (delayBufferR)
-        {
-            free(delayBufferR);
-            delayBufferR = nullptr;
-        }
-    }
-    
-    return kResultTrue;
-}
-
-tresult PLUGIN_API CrossDelayProcessor::setProcessing(TBool state)
-{
-    if (state)
-    {
         memset(delayBufferL, 0, delayLineSizeInSamples * sizeof(Sample32));
         memset(delayBufferR, 0, delayLineSizeInSamples * sizeof(Sample32));
     }
+    else
+    {
+        free(delayBufferL);
+        delayBufferL = nullptr;
+        free(delayBufferR);
+        delayBufferR = nullptr;
+    }
+    
     return kResultTrue;
 }
 
