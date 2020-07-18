@@ -25,7 +25,7 @@ BEGIN_FACTORY_DEF("Mohammed Danish",
 		kVstAudioEffectClass,
 		"Danish Cross Delay VST3",
 		Vst::kDistributable,
-		"Delay",
+		"Fx|Delay",
 		"1",
 		kVstVersionString,
 		Steinberg::Vst::Danish::CrossDelayProcessor::createInstance

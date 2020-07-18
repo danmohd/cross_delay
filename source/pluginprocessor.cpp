@@ -28,8 +28,9 @@ delayLineWriteHeadL(0),
 delayLineReadHeadL(0),
 delayLineWriteHeadR(0),
 delayLineReadHeadR(0),
-delayBufferL(nullptr),
-delayBufferR(nullptr)
+// delayBufferL(nullptr),
+// delayBufferR(nullptr)
+delayBufferInterleaved(nullptr)
 {
     setControllerClass(EditorUID);
 }
@@ -57,6 +58,9 @@ tresult PLUGIN_API CrossDelayProcessor::initialize(FUnknown* context)
 
 tresult PLUGIN_API CrossDelayProcessor::terminate()
 {
+    // free(delayBufferL);
+    // free(delayBufferR);
+    free(delayBufferInterleaved);
     tresult result = AudioEffect::terminate();
     return result;
 }
@@ -102,12 +106,12 @@ tresult PLUGIN_API CrossDelayProcessor::setupProcessing(ProcessSetup& setup)
     delayLineSizeInSamples = processSetup.sampleRate * maxDelayTimeInSeconds;
     if (canProcessSampleSize(processSetup.symbolicSampleSize) != kResultTrue) return kResultFalse;
 
-    delayTimeInSamplesL = static_cast<int32>(delayTimeL * delayLineSizeInSamples);
-    delayTimeInSamplesR = static_cast<int32>(delayTimeR * delayLineSizeInSamples);
+    delayTimeInSamplesL = std::max<int32>(static_cast<int32>(delayTimeL * delayLineSizeInSamples), 1);
+    delayTimeInSamplesR = std::max<int32>(static_cast<int32>(delayTimeR * delayLineSizeInSamples), 1);
     delayLineWriteHeadL = 0;
-    delayLineWriteHeadR = 0;
-    delayLineReadHeadL = (delayLineWriteHeadL - delayTimeInSamplesL + delayLineSizeInSamples) % delayLineSizeInSamples;
-    delayLineReadHeadR = (delayLineWriteHeadR - delayTimeInSamplesR + delayLineSizeInSamples) % delayLineSizeInSamples;
+    delayLineWriteHeadR = 1;
+    delayLineReadHeadL = (delayLineWriteHeadL - 2 * delayTimeInSamplesL + 2 * delayLineSizeInSamples) % (2 * delayLineSizeInSamples);
+    delayLineReadHeadR = (delayLineWriteHeadR - 2 * delayTimeInSamplesR + 2 * delayLineSizeInSamples) % (2 * delayLineSizeInSamples);
 
     return kResultTrue;
 }
@@ -116,17 +120,36 @@ tresult PLUGIN_API CrossDelayProcessor::setActive(TBool state)
 {
     if (state)
     {
-        delayBufferL = (Sample32*)malloc(delayLineSizeInSamples * sizeof(Sample32));
-        delayBufferR = (Sample32*)malloc(delayLineSizeInSamples * sizeof(Sample32));
-        memset(delayBufferL, 0, delayLineSizeInSamples * sizeof(Sample32));
-        memset(delayBufferR, 0, delayLineSizeInSamples * sizeof(Sample32));
+        // delayBufferL = (Sample32*)malloc(delayLineSizeInSamples * sizeof(Sample32));
+        // if (!delayBufferL)
+        // {
+        //     return kResultFalse;
+        // }
+        // delayBufferR = (Sample32*)malloc(delayLineSizeInSamples * sizeof(Sample32));
+        // if (!delayBufferR)
+        // {
+        //     free(delayBufferL);
+        //     return kResultFalse;
+        // }
+        // memset(delayBufferL, 0, delayLineSizeInSamples * sizeof(Sample32));
+        // memset(delayBufferR, 0, delayLineSizeInSamples * sizeof(Sample32));
+
+        delayBufferInterleaved = (Sample32*)malloc(delayLineSizeInSamples * 2 * sizeof(Sample32));
+        if (!delayBufferInterleaved)
+        {
+            return kResultFalse;
+        }
+        memset(delayBufferInterleaved, 0, delayLineSizeInSamples * 2 * sizeof(Sample32));
     }
     else
     {
-        free(delayBufferL);
-        delayBufferL = nullptr;
-        free(delayBufferR);
-        delayBufferR = nullptr;
+        // free(delayBufferL);
+        // delayBufferL = nullptr;
+        // free(delayBufferR);
+        // delayBufferR = nullptr;
+
+        free(delayBufferInterleaved);
+        delayBufferInterleaved = nullptr;
     }
     
     return kResultTrue;
@@ -160,7 +183,7 @@ tresult PLUGIN_API CrossDelayProcessor::process(ProcessData& data)
                     {
                         delayTimeL = value;
                         delayTimeInSamplesL = std::max<int32>(static_cast<int32>(delayLineSizeInSamples * value), 1);
-                        delayLineReadHeadL = (delayLineWriteHeadL - delayTimeInSamplesL + delayLineSizeInSamples) % delayLineSizeInSamples;
+                        delayLineReadHeadL = (delayLineWriteHeadL - 2 * delayTimeInSamplesL + 2 * delayLineSizeInSamples) % (2 * delayLineSizeInSamples);
                     }
                     break;
 
@@ -169,7 +192,7 @@ tresult PLUGIN_API CrossDelayProcessor::process(ProcessData& data)
                     {
                         delayTimeR = value;
                         delayTimeInSamplesR = std::max<int32>(static_cast<int32>(delayLineSizeInSamples * value), 1);
-                        delayLineReadHeadR = (delayLineWriteHeadR - delayTimeInSamplesR + delayLineSizeInSamples) % delayLineSizeInSamples;
+                        delayLineReadHeadR = (delayLineWriteHeadR - 2 * delayTimeInSamplesR + 2 * delayLineSizeInSamples) % (2 * delayLineSizeInSamples);
                     }
                     break;
 
@@ -212,14 +235,14 @@ tresult PLUGIN_API CrossDelayProcessor::process(ProcessData& data)
     Sample32** outputs = data.outputs[0].channelBuffers32;
     int32 numSamples = data.numSamples;
 
-    if (data.inputs[0].silenceFlags > 0)
-    {
-        data.outputs[0].silenceFlags = data.inputs[0].silenceFlags;
-        for (int32 channel = 0; channel < numChannels; ++channel)
-            if ((data.outputs[0].silenceFlags & (1 << channel)) > 0) memset(outputs[channel], 0, numSamples * sizeof(Sample32));
+    // if (data.inputs[0].silenceFlags > 0)
+    // {
+    //     data.outputs[0].silenceFlags = data.inputs[0].silenceFlags;
+    //     for (int32 channel = 0; channel < numChannels; ++channel)
+    //         if ((data.outputs[0].silenceFlags & (1 << channel)) > 0) memset(outputs[channel], 0, numSamples * sizeof(Sample32));
 
-        return kResultTrue;
-    }
+    //     return kResultTrue;
+    // }
 
     data.outputs[0].silenceFlags = 0;
 
@@ -331,19 +354,26 @@ void PLUGIN_API CrossDelayProcessor::processBlock(Sample32** inputs, Sample32** 
 
     for (int32 sample = 0; sample < numSamples; ++sample)
     {
-        Sample32 delayedL = delayBufferL[delayLineReadHeadL];
-        Sample32 delayedR = delayBufferR[delayLineReadHeadR];
+        // Sample32 delayedL = delayBufferL[delayLineReadHeadL];
+        // Sample32 delayedR = delayBufferR[delayLineReadHeadR];
+        Sample32 delayedL = delayBufferInterleaved[delayLineReadHeadL];
+        Sample32 delayedR = delayBufferInterleaved[delayLineReadHeadR];
 
-        outputL[sample] = (1.0f - mixL) * inputL[sample] + mixL * delayedL;
-        outputR[sample] = (1.0f - mixR) * inputR[sample] + mixR * delayedR;
+        Sample32 oL = (1.0f - mixL) * inputL[sample] + mixL * delayedL;
+        Sample32 oR = (1.0f - mixR) * inputR[sample] + mixR * delayedR;
 
-        delayBufferL[delayLineWriteHeadL] = inputL[sample] + feedbackL * delayedL + crossFeedback * delayedR;
-        delayBufferR[delayLineWriteHeadR] = inputR[sample] + feedbackR * delayedR + crossFeedback * delayedL;
+        // delayBufferL[delayLineWriteHeadL] = inputL[sample] + feedbackL * delayedL + crossFeedback * delayedR;
+        // delayBufferR[delayLineWriteHeadR] = inputR[sample] + feedbackR * delayedR + crossFeedback * delayedL;
+        delayBufferInterleaved[delayLineWriteHeadL] = inputL[sample] + feedbackL * delayedL + crossFeedback * delayedR;
+        delayBufferInterleaved[delayLineWriteHeadR] = inputR[sample] + feedbackR * delayedR + crossFeedback * delayedL;
 
-        delayLineReadHeadL = (delayLineReadHeadL + 1) % delayLineSizeInSamples;
-        delayLineReadHeadR = (delayLineReadHeadR + 1) % delayLineSizeInSamples;
-        delayLineWriteHeadL = (delayLineWriteHeadL + 1) % delayLineSizeInSamples;
-        delayLineWriteHeadR = (delayLineWriteHeadR + 1) % delayLineSizeInSamples;
+        delayLineReadHeadL = (delayLineReadHeadL + 2) % (2 * delayLineSizeInSamples);
+        delayLineReadHeadR = (delayLineReadHeadR + 2) % (2 * delayLineSizeInSamples);
+        delayLineWriteHeadL = (delayLineWriteHeadL + 2) % (2 * delayLineSizeInSamples);
+        delayLineWriteHeadR = (delayLineWriteHeadR + 2) % (2 * delayLineSizeInSamples);
+
+        outputL[sample] = oL;
+        outputR[sample] = oR;
     }
 }
 

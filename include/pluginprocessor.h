@@ -52,8 +52,10 @@ private:
     int32 delayLineWriteHeadR;
     int32 delayLineReadHeadR;
 
-    Sample32* delayBufferL;
-    Sample32* delayBufferR;
+    // Sample32* delayBufferL;
+    // Sample32* delayBufferR;
+    
+    Sample32* delayBufferInterleaved;
 };
 
 }
